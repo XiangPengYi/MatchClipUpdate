@@ -1,7 +1,7 @@
 [
   {
     "InstallCode": "HiwaveIGBT",
-    "Version": "3.0.0.6",
+    "Version": "3.0.0.10",
     "Desc": "修复已发现bug,持续优化"
   }
 ]

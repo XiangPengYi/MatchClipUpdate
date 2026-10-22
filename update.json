@@ -1,7 +1,7 @@
 [
   {
     "InstallCode": "HiwaveIGBT",
-    "Version": "3.0.0.8",
-    "Desc": "WPF现用初始版本"
+    "Version": "3.0.0.12",
+    "Desc": "1.修复已知的bug，2.简化界面，3.优化报告设置功能"
   }
 ]

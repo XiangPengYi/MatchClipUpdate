@@ -1,0 +1,69 @@
+name: Refresh update cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - update.json
+      - .github/workflows/refresh-update-cache.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-update-cache
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: 刷新并核对更新信息
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          path="/gh/${GITHUB_REPOSITORY}@main/update.json"
+          jq -S . update.json > expected.json
+
+          # 提交缓存刷新请求，输出接口返回结果。
+          curl --fail --silent --show-error \
+            --retry 2 --max-time 30 \
+            "https://purge.jsdelivr.net${path}" \
+            -o purge-result.json
+          cat purge-result.json
+
+          # 核对程序使用的两个地址，不能只看刷新请求是否成功。
+          for host in fastly.jsdelivr.net cdn.jsdelivr.net; do
+            matched=false
+
+            for attempt in {1..12}; do
+              echo "核对 ${host}，第 ${attempt} 次"
+
+              if curl --fail --silent --show-error \
+                   --max-time 10 \
+                   "https://${host}${path}" -o received.json \
+                 && jq -S . received.json > actual.json \
+                 && cmp -s expected.json actual.json; then
+                matched=true
+                break
+              fi
+
+              sleep 5
+            done
+
+            if [ "$matched" != true ]; then
+              echo "::error::${host} 返回的内容尚未与本次提交一致"
+              exit 1
+            fi
+          done
+
+          echo "两个更新地址均已返回本次提交的内容。"
